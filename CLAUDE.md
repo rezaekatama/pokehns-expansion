@@ -19,12 +19,26 @@ own source code.
    The correct check has two parts, both required:
    - **a)** Is the move in the real TM/HM list? → `include/constants/tms_hms.h`. **That file
      branches on `#if IS_HNS` vs `#else`** — this repo builds under `IS_HNS`, so only the first
-     branch is real: **93 TM moves + 8 HM moves (Cut/Fly/Surf/Strength/Flash/Rock Smash/
-     Waterfall/Whirlpool) = 101 total**, not 158. (158 was an earlier mistake in this session —
+     branch is real: **92 TM moves + 8 HM moves (Cut/Fly/Surf/Strength/Flash/Rock Smash/
+     Waterfall/Whirlpool) = 100 total**, not 158. (158 was an earlier mistake in this session —
      that number came from grepping the whole file and summing both the `IS_HNS` and `#else`
      branches together, which don't coexist in any actual build.) Extract the correct list with:
      `sed -n '6,98p' include/constants/tms_hms.h | grep -oP '(?<=F\()[A-Z_]+(?=\))'` (TM-only,
-     93 moves) — add `sed -n '100,108p' ...` for the 8 HMs if needed.
+     92 moves) — add `sed -n '100,108p' ...` for the 8 HMs if needed.
+
+   **Map/region caveat (learned the hard way on the Snorlax/Pokémon Tower question):** this repo
+   contains THREE map sets: `_hns`-suffixed maps (the real, connected Johto+Kanto world this hack
+   is actually built around — confirmed starter town `NewBarkTown_Lab_hns`), `_Frlg`-suffixed maps
+   (leftover vanilla FireRed/LeafGreen Kanto content, confirmed NOT connected to the `_hns` world —
+   e.g. `PokemonTower_7F_Frlg` has zero incoming connection from `LavenderTown_hns`), and plain
+   unsuffixed maps (base pokeemerald Hoenn content, e.g. `DewfordTown_Gym`, `MauvilleCity`,
+   `SlateportCity`) whose connection to the `_hns` world is **unconfirmed/likely absent** — a
+   repo-wide warp search found only one single edge (`BirthIsland_Harbor_hns` → `MAP_LILYCOVE_CITY_HARBOR`,
+   almost certainly a Mystery-Gift-only event island, not a real route). **Never cite a plain or
+   `_Frlg` map as something the player can actually reach without first checking it connects back
+   to an `_hns` map** — prefer the `_hns` source for anything (TM location, item, NPC) when one
+   exists, and flag it explicitly when it doesn't (e.g. TM32 Double Team's only known locations,
+   Mauville Game Corner and Route113, are both non-hns and unconfirmed-reachable).
    - **b)** Is the move listed for that species in `src/data/pokemon/all_learnables.json`
      (key = species name in SCREAMING_CASE, value = list of `MOVE_X` strings)?
      **Correction to earlier standing belief:** this file is NOT "just a potential/reference list
