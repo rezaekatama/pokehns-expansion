@@ -1,0 +1,252 @@
+<title>Route 49 Access</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<style>
+/* layout: a single vertical trail climbing the page, south (bottom) to north (Sinjoh, top) */
+:root{
+  --bg:#f3efe4;
+  --panel:#ffffff;
+  --ink:#2b2824;
+  --muted:#6b645a;
+  --line:#c9c0ab;
+  --accent:#2f6f6b;
+  --accent-soft:#dfeceb;
+  --gate:#a3451f;
+  --gate-soft:#f3ddd1;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#1b1a17;
+    --panel:#242320;
+    --ink:#ece7db;
+    --muted:#a39b8b;
+    --line:#45423a;
+    --accent:#6fc6bf;
+    --accent-soft:#1f3534;
+    --gate:#e08a63;
+    --gate-soft:#3a2a22;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#1b1a17;
+  --panel:#242320;
+  --ink:#ece7db;
+  --muted:#a39b8b;
+  --line:#45423a;
+  --accent:#6fc6bf;
+  --accent-soft:#1f3534;
+  --gate:#e08a63;
+  --gate-soft:#3a2a22;
+  color-scheme: dark;
+}
+
+*{box-sizing:border-box}
+body{
+  margin:0;
+  background:var(--bg);
+  color:var(--ink);
+  font-family:"Source Sans 3", system-ui, sans-serif;
+  padding-left:max(16px, env(safe-area-inset-left,0px));
+  padding-right:max(16px, env(safe-area-inset-right,0px));
+}
+.wrap{
+  max-width:720px;
+  margin:0 auto;
+  padding-block: 28px 56px;
+}
+h1{
+  font-family:"Fraunces", Georgia, serif;
+  font-weight:600;
+  font-size:clamp(28px,6vw,38px);
+  text-wrap:balance;
+  margin:0 0 4px;
+}
+.sub{
+  color:var(--muted);
+  font-size:15px;
+  margin:0 0 28px;
+  max-width:65ch;
+}
+.sub b{color:var(--ink)}
+
+figure{margin:0 0 32px}
+svg{display:block;width:100%;height:auto;max-width:100%}
+figcaption{
+  font-size:13px;
+  color:var(--muted);
+  margin-top:10px;
+  max-width:65ch;
+}
+
+.steps{
+  display:flex;
+  flex-direction:column;
+  gap:0;
+  border-left:2px solid var(--line);
+  margin-left:11px;
+}
+.step{
+  position:relative;
+  padding:0 0 26px 28px;
+}
+.step:last-child{padding-bottom:0}
+.step::before{
+  content:"";
+  position:absolute;
+  left:-18px;
+  top:2px;
+  width:14px;
+  height:14px;
+  border-radius:50%;
+  background:var(--accent);
+  border:3px solid var(--bg);
+  box-shadow:0 0 0 2px var(--accent);
+}
+.step.gate::before{background:var(--gate); box-shadow:0 0 0 2px var(--gate)}
+.step-name{
+  font-weight:700;
+  font-size:16px;
+  margin:0 0 3px;
+}
+.step-detail{
+  color:var(--muted);
+  font-size:14px;
+  line-height:1.5;
+}
+.tag{
+  display:inline-block;
+  font-size:11.5px;
+  font-weight:700;
+  letter-spacing:.03em;
+  text-transform:uppercase;
+  padding:3px 8px;
+  border-radius:5px;
+  background:var(--gate-soft);
+  color:var(--gate);
+  margin-left:8px;
+  vertical-align:1px;
+}
+
+.note{
+  margin-top:36px;
+  padding:16px 18px;
+  background:var(--panel);
+  border:1px solid var(--line);
+  border-radius:10px;
+  font-size:14px;
+  color:var(--muted);
+  line-height:1.6;
+}
+.note b{color:var(--ink)}
+.note code{
+  background:var(--accent-soft);
+  color:var(--accent);
+  padding:1px 6px;
+  border-radius:4px;
+  font-size:12.5px;
+  font-family:"JetBrains Mono", ui-monospace, monospace;
+}
+</style>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500..700&family=Source+Sans+3:wght@400;600;700&family=JetBrains+Mono&display=swap">
+
+<div class="wrap">
+  <h1>Getting to Route 49</h1>
+  <p class="sub">Route 49 sits past Mt. Silver, behind a Waterfall climb. Traced from this repo's own map connection data (<code>map.json</code> warps and connections) — not guessed from memory.</p>
+
+  <figure>
+    <svg viewBox="0 0 640 560" role="img" aria-label="Diagram of the path from Route 28 through Mt. Silver and Snowswept Cavern to Route 49, continuing on to New Sinjoh, Route 50 and Sinjoh Ruins.">
+      <defs>
+        <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M0,0 L10,5 L0,10 z" fill="currentColor"/>
+        </marker>
+      </defs>
+      <style>
+        .node{fill:var(--panel); stroke:var(--line); stroke-width:1.5}
+        .node.gate{stroke:var(--gate); stroke-width:2}
+        .node.dest{stroke:var(--accent); stroke-width:2.5}
+        text{font-family:"Source Sans 3", system-ui, sans-serif; fill:var(--ink)}
+        .lbl{font-size:14px; font-weight:700}
+        .sub-lbl{font-size:11px; fill:var(--muted)}
+        .edge-lbl{font-size:11px; fill:var(--muted)}
+        line, path.edge{stroke:var(--ink); stroke-width:1.6; marker-end:url(#arrow); opacity:.75}
+        line.gate-edge{stroke:var(--gate); stroke-width:2; opacity:1}
+      </style>
+
+      <!-- Route28 -->
+      <rect class="node" x="230" y="12" width="180" height="46" rx="8"/>
+      <text class="lbl" x="320" y="31" text-anchor="middle">Route 28</text>
+      <text class="sub-lbl" x="320" y="47" text-anchor="middle">main road, Johto/Kanto border</text>
+
+      <line x1="320" y1="58" x2="320" y2="96"/>
+      <text class="edge-lbl" x="336" y="80">enter rightward</text>
+
+      <!-- Mt Silver Outside -->
+      <rect class="node" x="210" y="96" width="220" height="46" rx="8"/>
+      <text class="lbl" x="320" y="115" text-anchor="middle">Mt. Silver — Outside</text>
+      <text class="sub-lbl" x="320" y="131" text-anchor="middle">climb into the mountain</text>
+
+      <line x1="320" y1="142" x2="320" y2="180"/>
+
+      <!-- Waterfall Room -->
+      <rect class="node gate" x="195" y="180" width="250" height="52" rx="8"/>
+      <text class="lbl" x="320" y="202" text-anchor="middle">Mt. Silver 1F</text>
+      <text class="lbl" x="320" y="220" text-anchor="middle">Waterfall Room<tspan class="sub-lbl" dx="8">HM needed</tspan></text>
+
+      <line class="gate-edge" x1="320" y1="232" x2="320" y2="270"/>
+      <text class="edge-lbl" x="336" y="256" fill="var(--gate)" font-weight="700">climb the waterfall ⤒</text>
+
+      <!-- Snowswept Cavern -->
+      <rect class="node" x="200" y="270" width="240" height="46" rx="8"/>
+      <text class="lbl" x="320" y="289" text-anchor="middle">Snowswept Cavern</text>
+      <text class="sub-lbl" x="320" y="305" text-anchor="middle">connecting passage</text>
+
+      <line x1="320" y1="316" x2="320" y2="354"/>
+
+      <!-- Route49 : destination -->
+      <rect class="node dest" x="220" y="354" width="200" height="50" rx="8"/>
+      <text class="lbl" x="320" y="374" text-anchor="middle" font-size="16">Route 49</text>
+      <text class="sub-lbl" x="320" y="392" text-anchor="middle">destination</text>
+
+      <line x1="320" y1="404" x2="320" y2="442"/>
+      <text class="edge-lbl" x="336" y="426">north, further up</text>
+
+      <!-- New Sinjoh -->
+      <rect class="node" x="210" y="442" width="220" height="42" rx="8"/>
+      <text class="lbl" x="320" y="468" text-anchor="middle" font-size="14">New Sinjoh</text>
+
+      <line x1="320" y1="484" x2="320" y2="514"/>
+
+      <!-- Route 50 -->
+      <rect class="node" x="230" y="514" width="180" height="42" rx="8"/>
+      <text class="lbl" x="320" y="540" text-anchor="middle" font-size="14">Route 50 → Sinjoh Ruins</text>
+    </svg>
+  </figure>
+
+  <ol class="steps" style="list-style:none; padding-left:0; margin:0">
+    <li class="step">
+      <p class="step-name">Start at Route 28</p>
+      <p class="step-detail">The last stretch of road before the mountain. Head toward Mt. Silver's entrance.</p>
+    </li>
+    <li class="step">
+      <p class="step-name">Mt. Silver — Outside</p>
+      <p class="step-detail">Walk in; this links straight back to Route 28, so it's the only door in.</p>
+    </li>
+    <li class="step gate">
+      <p class="step-name">Mt. Silver 1F, Waterfall Room <span class="tag">HM Waterfall</span></p>
+      <p class="step-detail">A scientist NPC marks this room; the climb itself needs the Waterfall HM on a Pokémon in your party. A warp here leads into Snowswept Cavern.</p>
+    </li>
+    <li class="step">
+      <p class="step-name">Snowswept Cavern</p>
+      <p class="step-detail">A short connecting cave — no detours, it opens straight onto Route 49.</p>
+    </li>
+    <li class="step">
+      <p class="step-name">Route 49</p>
+      <p class="step-detail">You've arrived. Wild Kangaskhan shows up here too.</p>
+    </li>
+  </ol>
+
+  <div class="note">
+    <b>Past Route 49:</b> heading further north chains into <b>New Sinjoh</b> → <b>Route 50</b> → <b>Sinjoh Ruins</b>, the legendary-quest cluster (Regirock/Regice/Registeel/Regieleki/Regidrago/Regigigas/Arceus rooms). None of that area connects back out anywhere else in the map data — Mt. Silver's Waterfall Room is the only door in or out.
+  </div>
+</div>
