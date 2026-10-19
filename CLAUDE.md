@@ -17,9 +17,14 @@ own source code.
    had no TM — all of these actually do).
 
    The correct check has two parts, both required:
-   - **a)** Is the move in the real TM/HM list? → `include/constants/tms_hms.h`, the
-     `FOREACH_TM` macro block (158 moves total as of this check). Extract with:
-     `grep -oP '(?<=F\()[A-Z_]+(?=\))' include/constants/tms_hms.h`
+   - **a)** Is the move in the real TM/HM list? → `include/constants/tms_hms.h`. **That file
+     branches on `#if IS_HNS` vs `#else`** — this repo builds under `IS_HNS`, so only the first
+     branch is real: **93 TM moves + 8 HM moves (Cut/Fly/Surf/Strength/Flash/Rock Smash/
+     Waterfall/Whirlpool) = 101 total**, not 158. (158 was an earlier mistake in this session —
+     that number came from grepping the whole file and summing both the `IS_HNS` and `#else`
+     branches together, which don't coexist in any actual build.) Extract the correct list with:
+     `sed -n '6,98p' include/constants/tms_hms.h | grep -oP '(?<=F\()[A-Z_]+(?=\))'` (TM-only,
+     93 moves) — add `sed -n '100,108p' ...` for the 8 HMs if needed.
    - **b)** Is the move listed for that species in `src/data/pokemon/all_learnables.json`
      (key = species name in SCREAMING_CASE, value = list of `MOVE_X` strings)?
      **Correction to earlier standing belief:** this file is NOT "just a potential/reference list
