@@ -6,11 +6,36 @@ own source code.
 
 ## How to check if a species can learn a move — correct order
 
-1. **Level-up learnset**: `src/data/pokemon/level_up_learnsets/gen_9.h` (array `s<Species>LevelUpLearnset`).
-   Most reliable — always check first.
+1. **Level-up learnset**: `src/data/pokemon/level_up_learnsets/gen_<N>.h` (array `s<Species>LevelUpLearnset`).
+   **`gen_9.h` is NOT automatically the right file — check `P_LVL_UP_LEARNSETS` in
+   `include/config/pokemon.h` first.** `src/pokemon.c:2867-2885` `#include`s exactly ONE of
+   `gen_1.h` through `gen_9.h` based on that config value (highest matching `#elif`). In this repo
+   `P_LVL_UP_LEARNSETS` is **`GEN_7`** (`include/config/pokemon.h:14`), so the real, compiled
+   learnset file is **`level_up_learnsets/gen_7.h`**, not `gen_9.h`. This was a standing error for
+   this entire session before it was caught (triggered by the user providing a screenshot of their
+   own in-game Clefable with Seismic Toss, which neither `gen_9.h` nor `gen_7.h` actually explained
+   — see point 3a below for the real explanation — but re-deriving it is what surfaced this
+   separate, real bug). Re-check any earlier level-up-learnset claim made against `gen_9.h` if it
+   matters for the current question; `gen_7.h` and `gen_9.h` can differ (Clefable's own learnsets
+   differ move-for-move between the two files).
 2. **Egg move**: `src/data/pokemon/egg_moves.h` (array `s<Species>EggMoveLearnset`). Check the
-   species AND every pre-evolution in its line (egg moves are inherited through evolution).
-3. **TM/Tutor move — DO NOT just grep `items.h` for `[ITEM_TM_<MOVE>]`.** That only finds the
+   species AND every pre-evolution in its line (egg moves are inherited through evolution). This
+   file is NOT gen-conditional (single file, always compiled), unlike level-up learnsets.
+3. **Move Tutor (NPC) — a 4th acquisition path, separate from TM, distinct from both
+   `all_learnables.json`-filtered TM/tutor compatibility AND `special_movesets.json`'s
+   `extraTutors`.** This was missed for this whole session until the same Clefable/Seismic Toss
+   case forced it: Seismic Toss is not a TM, not in Clefable's level-up learnset in EITHER
+   `gen_7.h` or `gen_9.h`, and not an egg move — it's taught by an actual Move Tutor NPC at
+   **Battle Frontier Lounge 7 (`data/maps/BattleFrontier_Lounge7_hns/scripts.inc`)** for 24 Battle
+   Points, reachable via `BattleFrontier_OutsideWest_hns` ← `BattleFrontier_OutsideEast_hns`. These
+   NPCs use the `ChooseMonForMoveTutor` special and set `VAR_0x8005` to the move constant; grep
+   `grep -rn "MOVE_<NAME>" data/maps/*/scripts.inc` and look for that pattern nearby, independent
+   of `all_tutors.json`/`extraTutors` (those feed the auto-generated TM-relearner pool, which is a
+   different, narrower mechanism — a Move Tutor NPC existing in a map script is reachable even if
+   it never shows up in that generated pool). Prefer an `_hns`-suffixed tutor map per the existing
+   map-set caveat below; `move_tutors_frlg.inc` has the same Seismic Toss tutor for the
+   disconnected Frlg world (`PewterCity_Museum_1F`) — don't cite that one as reachable.
+5. **TM — DO NOT just grep `items.h` for `[ITEM_TM_<MOVE>]`.** That only finds the
    50 "legacy" TMs that have hand-written flavor text/price in `items.h` (TM01–TM50, classic
    Emerald set). **It misses the other ~108 TMs.** This was a real mistake made earlier in this
    session (wrongly concluded Sleep Talk, Roost, Thunder Wave, Drain Punch, U-Turn, Swords Dance
@@ -25,20 +50,6 @@ own source code.
      branches together, which don't coexist in any actual build.) Extract the correct list with:
      `sed -n '6,98p' include/constants/tms_hms.h | grep -oP '(?<=F\()[A-Z_]+(?=\))'` (TM-only,
      92 moves) — add `sed -n '100,108p' ...` for the 8 HMs if needed.
-
-   **Map/region caveat (learned the hard way on the Snorlax/Pokémon Tower question):** this repo
-   contains THREE map sets: `_hns`-suffixed maps (the real, connected Johto+Kanto world this hack
-   is actually built around — confirmed starter town `NewBarkTown_Lab_hns`), `_Frlg`-suffixed maps
-   (leftover vanilla FireRed/LeafGreen Kanto content, confirmed NOT connected to the `_hns` world —
-   e.g. `PokemonTower_7F_Frlg` has zero incoming connection from `LavenderTown_hns`), and plain
-   unsuffixed maps (base pokeemerald Hoenn content, e.g. `DewfordTown_Gym`, `MauvilleCity`,
-   `SlateportCity`) whose connection to the `_hns` world is **unconfirmed/likely absent** — a
-   repo-wide warp search found only one single edge (`BirthIsland_Harbor_hns` → `MAP_LILYCOVE_CITY_HARBOR`,
-   almost certainly a Mystery-Gift-only event island, not a real route). **Never cite a plain or
-   `_Frlg` map as something the player can actually reach without first checking it connects back
-   to an `_hns` map** — prefer the `_hns` source for anything (TM location, item, NPC) when one
-   exists, and flag it explicitly when it doesn't (e.g. TM32 Double Team's only known locations,
-   Mauville Game Corner and Route113, are both non-hns and unconfirmed-reachable).
    - **b)** Is the move listed for that species in `src/data/pokemon/all_learnables.json`
      (key = species name in SCREAMING_CASE, value = list of `MOVE_X` strings)?
      **Correction to earlier standing belief:** this file is NOT "just a potential/reference list
@@ -55,14 +66,32 @@ own source code.
      Rest/Sleep Talk/etc. here. If `ALL_TEACHABLES`, the species gets every TM/tutor move minus
      `signatureTeachables`.
    - A move NOT present at all in `include/constants/tms_hms.h`'s `FOREACH_TM` list cannot be a
-     TM for ANY species, full stop (no need to check all_learnables.json for it). Confirmed NOT
-     real TMs: Confuse Ray, Foul Play, Strength Sap, Leech Life, Seismic Toss, Recover, Ice/Fire/
-     Thunder Punch, Knock Off.
+     TM for ANY species, full stop (no need to check all_learnables.json for it) — but it can
+     still be a Move Tutor move (point 3 above) or a level-up/egg move, so "not a TM" is never the
+     end of the check. Confirmed NOT real TMs: Confuse Ray, Foul Play, Strength Sap, Leech Life,
+     Seismic Toss (→ Move Tutor instead, see point 3), Recover, Ice/Fire/Thunder Punch, Knock Off.
    - Confirmed real TMs people got wrong earlier in this session: **Thunder Wave, Drain Punch,
      Sleep Talk, Roost, U-Turn, Swords Dance, Rest, Toxic, Earthquake.**
-4. Universal moves (granted to basically everyone, from `special_movesets.json`'s
+6. Universal moves (granted to basically everyone, from `special_movesets.json`'s
    `universalMoves`): Bide, Frustration, Hidden Power, Mimic, Natural Gift, Rage, Return,
-   Secret Power, Substitute, Tera Blast. `extraTutors` in that file is empty `[]` in this repo.
+   Secret Power, Substitute, Tera Blast. `extraTutors` in that file is empty `[]` in this repo —
+   that field is NOT the same thing as the map-script Move Tutors in point 3; don't treat it as
+   covering them.
+
+## Map/region caveat (learned the hard way on the Snorlax/Pokémon Tower question)
+
+This repo contains THREE map sets: `_hns`-suffixed maps (the real, connected Johto+Kanto world
+this hack is actually built around — confirmed starter town `NewBarkTown_Lab_hns`), `_Frlg`-suffixed
+maps (leftover vanilla FireRed/LeafGreen Kanto content, confirmed NOT connected to the `_hns` world
+— e.g. `PokemonTower_7F_Frlg` has zero incoming connection from `LavenderTown_hns`), and plain
+unsuffixed maps (base pokeemerald Hoenn content, e.g. `DewfordTown_Gym`, `MauvilleCity`,
+`SlateportCity`) whose connection to the `_hns` world is **unconfirmed/likely absent** — a
+repo-wide warp search found only one single edge (`BirthIsland_Harbor_hns` → `MAP_LILYCOVE_CITY_HARBOR`,
+almost certainly a Mystery-Gift-only event island, not a real route). **Never cite a plain or
+`_Frlg` map as something the player can actually reach without first checking it connects back
+to an `_hns` map** — prefer the `_hns` source for anything (TM location, item, NPC, Move Tutor)
+when one exists, and flag it explicitly when it doesn't (e.g. TM32 Double Team's only known
+locations, Mauville Game Corner and Route113, are both non-hns and unconfirmed-reachable).
 
 ### Quick re-usable check (python)
 ```python
