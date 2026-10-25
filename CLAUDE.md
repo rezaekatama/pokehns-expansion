@@ -71,7 +71,8 @@ own source code.
      end of the check. Confirmed NOT real TMs: Confuse Ray, Foul Play, Strength Sap, Leech Life,
      Seismic Toss (→ Move Tutor instead, see point 3), Recover, Ice/Fire/Thunder Punch, Knock Off.
    - Confirmed real TMs people got wrong earlier in this session: **Thunder Wave, Drain Punch,
-     Sleep Talk, Roost, U-Turn, Swords Dance, Rest, Toxic, Earthquake.**
+     Sleep Talk, Roost, U-Turn, Swords Dance, Rest, Toxic, Earthquake, Protect, Substitute,
+     Aerial Ace.**
 6. Universal moves (granted to basically everyone, from `special_movesets.json`'s
    `universalMoves`): Bide, Frustration, Hidden Power, Mimic, Natural Gift, Rage, Return,
    Secret Power, Substitute, Tera Blast. `extraTutors` in that file is empty `[]` in this repo —
@@ -114,7 +115,7 @@ Gyarados, the whole Eeveelution line, Kangaskhan, Quagsire, Scizor, Breloom, Lud
 Typhlosion, Feraligatr, Clefable, Clodsire, Dondozo, Pyukumuku (confirmed despite its
 `TM_ILLITERATE` tag — doesn't matter per rule above), Garganacl, Regirock/Regice/Registeel, Xatu/
 Natu, Hatenna/Hattrem/Hatterene, Metagross, Poliwrath, Jumpluff, Tangrowth/Tangela, Chansey/
-Blissey, Crobat.
+Blissey, Crobat, Togekiss.
 
 Specific corrections to earlier (wrong) answers in this session:
 - **Metagross**: CAN learn Rest + Sleep Talk via TM (previously wrongly said impossible).
@@ -125,9 +126,87 @@ Specific corrections to earlier (wrong) answers in this session:
 - **Regirock/Regice/Registeel/Garganacl**: CAN learn Sleep Talk + Rest via TM — this reopens the
   "Clear-Body-family RestTalk wall" question that was earlier answered "not found," since the TM
   check was missing at the time.
+- **Togepi/Togetic/Togekiss**: CAN learn Swagger via TM (confuses target but also raises its Attack
+  +2 — a real risk, weigh against Sweet Kiss, which the line gets as a native level-up move at lv9
+  on Togepi/Togetic only, pure confuse with no stat side-effect, but 75% accuracy vs Swagger's 85%).
 - Still correctly unavailable (confirmed NOT real TMs, applies to every species): Confuse Ray,
   Foul Play, Strength Sap, Leech Life, Seismic Toss, Recover.
 
 Moves still only obtainable via level-up/egg (not TM) when claimed for a species — e.g. Confuse
 Ray on Natu/Xatu, Foul Play's absence on Umbreon, Strength Sap on the Hoppip line, Seismic Toss on
 Chansey — remain correctly verified as before; only the TM-based "not available" claims were wrong.
+
+## Battle engine mechanics verified in this repo's source (cite exact file:line when reusing)
+
+- **Status exclusivity**: `STATUS1_ANY` means only one major status (poison/toxic/burn/paralysis/
+  sleep/freeze/frostbite) can be on a battler at once — e.g. Thunder Wave and Toxic can never
+  coexist on the same target. Confusion and flinch are NOT status1 (they're volatile conditions),
+  so paralysis + confusion, or paralysis + confusion + flinch, CAN all stack on the same target
+  simultaneously.
+- **Canceler pipeline & ordering matters** (`src/battle_move_resolution.c`, array
+  `sMoveSuccessOrderCancelers` at lines 1989-2036, loop `DoAttackCanceler` at 2038-2059): every
+  turn, a battler's ability to act is checked against ordered gates; the loop stops at the FIRST
+  gate that returns `CANCELER_RESULT_FAILURE`, so a gate's side effects (like decrementing a
+  status counter) never run if an earlier gate in the array already failed that turn. Order in
+  this repo: `CANCELER_ASLEEP_OR_FROZEN` (very early) → ... → `CANCELER_FLINCH` → ... →
+  `CANCELER_CONFUSED` → `CANCELER_GHOST` → `CANCELER_PARALYZED` → ...
+  - **Sleep counter** (`CancelerAsleepOrFrozen`, line 108-183) is checked/decremented BEFORE
+    flinch — so sleep's turn-counter always ticks down regardless of flinch that turn. `toSub = 1`
+    normally, `toSub = 2` with Early Bird (wakes up twice as fast).
+  - **Confusion counter** (`CancelerConfused`, line 375-415) is checked/decremented AFTER flinch —
+    so if a battler flinches, its confusion counter does NOT decrement that turn (confusion
+    duration effectively freezes/extends when paired with flinch, it does not get cured early).
+  - **Paralysis has no counter at all** — it's a fresh `RandomPercentage(RNG_PARALYSIS, 75)` roll
+    every turn (`CancelerParalyzed`, line 431-442; 75% act, 25% full paralysis), with no stored
+    duration to decrement, freeze, or cancel. Confusion and paralysis do NOT "cancel" each other's
+    counters; they just run in that fixed order, and if confusion's self-hit fires first (50%
+    chance in this repo, see below), the paralysis roll for that turn simply never happens — it's
+    not "blocked," it's never reached.
+  - Confusion self-hit chance: `GetConfig(B_CONFUSION_SELF_DMG_CHANCE)` is `GEN_3` in this repo
+    (`include/config/battle.h`), giving **50% self-hit**, NOT the modern Gen7+ 33%.
+    `B_CONFUSION_TURNS = 5` → duration is `RandomUniform(2, 5)` turns when first inflicted.
+  - Full paralysis chance: 25% (`RandomPercentage(RNG_PARALYSIS, 75)` → 75% act normally).
+  - Rest sets sleep to a FIXED 3 turns (`STATUS1_SLEEP_TURN(3)`, `battle_script_commands.c:7508`),
+    not random — unlike natural sleep-inducing moves (Spore etc.) which use
+    `RandomUniform(2, 4/5/8)` depending on the move.
+  - While asleep, ONLY `EFFECT_SNORE` and `EFFECT_SLEEP_TALK` moves can execute
+    (`CancelerAsleepOrFrozen` lines 140-148); any other chosen move auto-fails with
+    `BattleScript_MoveUsedIsAsleep`. Uproar (`EFFECT_UPROAR`) is NOT one of these and additionally
+    actively prevents sleep for the whole field (`UproarWakeUpCheck`,
+    `battle_script_commands.c:7515-7534`) — never pair Rest with Uproar on the same set.
+  - **King's Rock** (`TryKingsRock`, `src/battle_hold_effects.c:197-221`) explicitly returns
+    NO_EFFECT if the move used already has its own `MOVE_EFFECT_FLINCH` (line 204:
+    `MoveHasAdditionalEffect(gCurrentMove, MOVE_EFFECT_FLINCH)`) — so King's Rock does NOT stack a
+    second flinch roll on moves like Air Slash or Snore that already flinch on their own; it only
+    adds value on moves with no inherent flinch chance. Serene Grace doubles a move's OWN
+    secondary-effect chance (`B_SERENE_GRACE_BOOST`) and also doubles King's Rock's chance via the
+    same code path (line 210-211) when both are present, but that's moot on a move that already
+    disqualifies King's Rock via line 204.
+  - **Snore** (`moves_info.h:4724-4744`): can only be used while asleep, 30% base flinch
+    (`MOVE_EFFECT_FLINCH` chance 30, doubles to 60% with Serene Grace) — the correct move to pair
+    with Rest for a "still useful while asleep" flinch-lock set, NOT Uproar.
+  - **Uproar locks the user into repeating it** for 3 turns in this repo
+    (`B_UPROAR_TURNS = GEN_LATEST` → `B_UPROAR_TURN_COUNT(5) - 2 = 3`,
+    `battle_script_commands.c:2584-2591`, sets `volatiles.multipleTurns = TRUE` and
+    `gLockedMoves[gEffectBattler] = gCurrentMove`), the same mechanism as Thrash/Outrage/Petal
+    Dance — so once used, Rest/other moves literally cannot be selected until the lock ends, on
+    top of Uproar's own sleep-prevention effect.
+
+## Source files/locations established as reliable for recurring lookups
+
+- Species base stats/types/abilities: `src/data/pokemon/species_info/*.h` (split by family/gen).
+- Move data/effects: `src/data/moves_info.h`.
+- Move Tutor NPC scripts: `data/maps/*_hns/scripts.inc`, search for `ChooseMonForMoveTutor`.
+- Gym Leader rematches: NOT at the original gym. All 16 (Johto: Falkner/Bugsy/Whitney/Morty/Chuck/
+  Jasmine/Pryce/Clair; Kanto: Brock/Misty/Surge/Erika/Sabrina/Blaine/Janine/Blue) stand as object
+  events inside the single room `SaffronCity_FightingDojoVIP_hns` (reached via the normal
+  `SaffronCity_FightingDojo_hns`), gated by `FLAG_IS_KANTO_CHAMPION` for the first rematch tier and
+  additionally `VAR_SINJOH_STORYLINE >= 13` OR `VAR_ALOLA_STATE >= 4` OR `FLAG_USED_TELEPORTER` for
+  a stronger `_PostOBC` tier. Each leader's sprite is individually gated by its own
+  `FLAG_HIDE_DOJO_<NAME>` flag (see each leader's entry in
+  `SaffronCity_FightingDojoVIP_hns/map.json`'s `object_events`), which is only cleared by finding
+  and talking to a one-time cameo NPC for that leader scattered elsewhere on the overworld
+  (`grep -rn "clearflag FLAG_HIDE_DOJO_" data/maps/*/scripts.inc` to find them) — NOT by revisiting
+  their original gym (revisiting the gym after the badge fight is just flavor text, no rematch).
+  Two leaders (Chuck, Blue) are the exception: their cameo trigger script is inside their own gym
+  map, but it's a separate post-badge dialogue (`*_GotoDojo`), not the original badge battle.
