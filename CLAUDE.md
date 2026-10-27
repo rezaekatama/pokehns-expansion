@@ -21,6 +21,25 @@ own source code.
 2. **Egg move**: `src/data/pokemon/egg_moves.h` (array `s<Species>EggMoveLearnset`). Check the
    species AND every pre-evolution in its line (egg moves are inherited through evolution). This
    file is NOT gen-conditional (single file, always compiled), unlike level-up learnsets.
+2a. **Pre-evolution LEVEL-UP moves do NOT carry the same way — check `P_PRE_EVO_MOVES` before ever
+   claiming a post-evolution species can relearn a move its pre-evolution had.** Discovered via
+   the Tyrogue → Hitmontop / Fake Out case: Fake Out is NOT in `sHitmontopLevelUpLearnset` (nor in
+   Tyrogue's own egg-move list, nor a TM, nor taught by any Move Tutor NPC), but IS a native
+   level-up move for **Tyrogue itself** at level 1 (`sTyrogueLevelUpLearnset`,
+   `level_up_learnsets/gen_7.h:3170-3179`). The Move Relearner's own code
+   (`src/move_relearner.c`, `HasRelearnerLevelUpMoves`, lines 1330-1357) walks back through
+   pre-evolutions to check their level-up learnsets too — but ONLY `if (P_PRE_EVO_MOVES)` (line
+   1352: `species = (P_PRE_EVO_MOVES ? GetSpeciesPreEvolution(species) : SPECIES_NONE);`), and in
+   this repo **`P_PRE_EVO_MOVES` is `FALSE`** (`include/config/summary_screen.h:17`). So the
+   Move Relearner here flatly refuses to look at a pre-evolution's level-up moves — there is no
+   way to teach Hitmontop Fake Out after it has already evolved from Tyrogue. The ONLY way to get
+   it onto Hitmontop is to make sure the move is still in the moveset *while the mon is still
+   Tyrogue* (it's native at level 1, so usually already there unless overwritten) and then evolve
+   it — moves already known are preserved through evolution, this is just not something the
+   Relearner can restore afterward. This generalizes: any move that is a pre-evolution's own
+   level-up move but NOT in the final-stage species' own level-up/egg/TM/tutor list is a
+   "keep-it-before-you-evolve-or-lose-it-forever" move in this repo, not a "relearn it anytime"
+   move — always check `P_PRE_EVO_MOVES` before asserting otherwise.
 3. **Move Tutor (NPC) — a 4th acquisition path, separate from TM, distinct from both
    `all_learnables.json`-filtered TM/tutor compatibility AND `special_movesets.json`'s
    `extraTutors`.** This was missed for this whole session until the same Clefable/Seismic Toss
