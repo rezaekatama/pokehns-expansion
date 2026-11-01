@@ -229,3 +229,49 @@ Chansey — remain correctly verified as before; only the TM-based "not availabl
   their original gym (revisiting the gym after the badge fight is just flavor text, no rematch).
   Two leaders (Chuck, Blue) are the exception: their cameo trigger script is inside their own gym
   map, but it's a separate post-badge dialogue (`*_GotoDojo`), not the original badge battle.
+
+## EXTERNAL reference: EV investment theory (HP vs Def vs SpDef) — NOT repo-specific, cross-checked
+
+Source: a reddit.com/r/VGC post the user pasted (not fetchable in this environment's network policy;
+pasted manually). This is **general competitive theory, not a claim about this repo's own content**
+(no species/move/location claim here) — kept separate from the move/TM verification rules above,
+but its underlying math WAS cross-checked against this repo's actual formulas before saving, per the
+same "verify, don't just trust" standard:
+
+- **Damage formula check**: `CalculateBaseDamage`, `src/battle_util.c:7398-7400` —
+  `power * userFinalAttack * (2*level/5+2) / targetFinalDefense / 50 + 2`. Confirms damage IS
+  proportional to `power × (Atk/Def)` as the post assumes — its whole "effective HP" framework is
+  built on a ratio that matches this repo's real formula, not an approximation that diverges from it.
+- **EV→stat-point check**: `ModifyStatByNature`/stat calc, `src/pokemon.c:3772-3774` —
+  `floor(ev/4)` feeds directly into the stat sum, so **at level 100, every +4 EV = +1 final stat
+  point** (not +8 as the post's wording literally says). The post's own worked numbers
+  ("8 EVs → 1 point", "252 EVs → 32 points") only reconcile at **level 50** (VGC's format cap,
+  matching its subreddit) — at level 50 the `*level/100` scaling halves the raw EV contribution
+  (252/4=63 raw points × 0.5 ≈ 31-32). So the post is self-consistent for VGC's level-50 context,
+  NOT a level-100 claim — don't reuse its exact numbers (8 EV/point, 32 points from 252 EVs) for a
+  level-100 Pokémon without re-deriving at level 100 (where it's 4 EV/point, 63 points from 252 EVs).
+
+### The theory itself (summarized from the post)
+
+Think of a defensive stat as increasing "effective HP": damage taken ≈ `(move power) × (their
+Atk or SpA) / (your Def or SpD)`, so raising HP and raising the *relevant* defensive stat both
+reduce the fraction of your HP a hit removes — but which one is more EV-efficient depends on your
+current HP:Def (or HP:SpD) ratio, not on which stat is "lower" in absolute terms:
+- If HP and the relevant defense stat are **equal**, investing in either gives the same effective-HP
+  gain.
+- If the relevant **defense stat is lower** than HP, investing there gives a bigger effective-HP
+  % gain than the same EVs in HP (e.g. 150 HP / 50 Def: maxing Def is a 64% effective-HP gain vs
+  maxing HP's 21%).
+- If **HP is lower** than the relevant defense stat, the reverse holds — maxing HP is the better
+  deal.
+- The opponent's own Atk/SpA stat value does NOT change which of your stats is the better
+  investment — only the ratio between YOUR OWN HP and relevant defense stat matters for that
+  decision.
+
+Practical rule of thumb from the post:
+1. Defending a *specific known* physical or special hit → balance HP and that defense stat (raise
+   whichever is lower until they're equal, then raise both together).
+2. Defending against a format/metagame mostly-physical or mostly-special threat profile → same
+   balancing approach, aimed at Def or SpD accordingly.
+3. No specific threat in mind → HP first (it helps against both physical and special), then
+   re-balance into Def/SpD once you learn what's actually hitting the mon hard.
